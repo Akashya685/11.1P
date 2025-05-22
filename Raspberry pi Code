@@ -1,0 +1,45 @@
+import serial
+import RPi.GPIO as GPIO
+import time
+
+SERVO_PIN = 17  #GPIO17
+
+# Setup GPIO for servo
+GPIO.setwarnings(False)
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(SERVO_PIN, GPIO.OUT)
+
+servo = GPIO.PWM(SERVO_PIN, 50)
+servo.start(0)
+
+def set_servo(position):
+    if position == "LOCK":
+        print("Locking the door...")
+        servo.ChangeDutyCycle(2.5)
+    elif position == "UNLOCK":
+        print("Unlocking door...")
+        servo.ChangeDutyCycle(7.5)
+    time.sleep(1)
+    servo.ChangeDutyCycle(0)
+
+try:
+    ser = serial.Serial('/dev/ttyACM0', 9600)
+    print("Listening for commands from Arduino...")
+
+    while True:
+        line = ser.readline().decode().strip()
+        print(f"Received: {line}")
+
+        if line.startswith("Distance:"):
+            print(f"Distance Reading: {line.split(':')[1].strip()} cm")
+        elif "UNLOCK" in line:
+            set_servo("UNLOCK")
+        elif "LOCK" in line and "UNLOCK" not in line:
+            set_servo("LOCK")
+
+except KeyboardInterrupt:
+    print("Stopping...")
+
+finally:
+    servo.stop()
+    GPIO.cleanup()
